@@ -7,10 +7,10 @@ import requests
 app = Flask(__name__)
 
 # Load preprocessed data
-books = pickle.load(open("book-recommender/books.pkl", "rb"))
-popular = pickle.load(open("book-recommender/popular.pkl", "rb"))
-pt = pickle.load(open("book-recommender/pt.pkl", "rb"))
-similarity_scores = pickle.load(open("book-recommender/similarity_scores.pkl", "rb"))
+books = pickle.load(open("books.pkl", "rb"))
+popular = pickle.load(open("popular.pkl", "rb"))
+pt = pickle.load(open("pt.pkl", "rb"))
+similarity_scores = pickle.load(open("similarity_scores.pkl", "rb"))
 
 @app.route('/')
 def index():
