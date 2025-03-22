@@ -1,44 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <!-- Ensures proper scaling on mobile devices -->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Book Recommender System</title>
   <!-- Bootstrap CSS -->
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-  >
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
   <style>
     body {
       background-color: #1c1c1c;
-      color: #f8f9fa;
+      color: #fdfdfd;
+      margin: 0;
+      padding: 0;
     }
-    .navbar {
+    /* Minimal navigation bar */
+    nav {
       background-color: #343a40;
+      padding: 0.75rem;
     }
-    .navbar-brand {
+    .nav-container {
+      display: flex;
+      align-items: center;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .nav-brand {
       font-weight: bold;
       font-size: 1.6rem;
-      color: #f8f9fa !important;
+      color: #fdfdfd;
+      text-decoration: none;
     }
-    .nav-link {
-      color: #f8f9fa !important;
-      font-size: 1rem;
+    .btn-recommend {
+      margin-left: 1rem;
+      border: 1px solid #fdfdfd;
+      color: #fdfdfd;
+      background-color: transparent;
+      padding: 0.375rem 0.75rem;
+      border-radius: 0.25rem;
+      text-decoration: none;
     }
-    .section-title {
-      text-align: center;
-      margin: 30px 0 20px;
-      font-size: 2rem;
-      font-weight: bold;
-      color: #f8f9fa;
+    .btn-recommend:hover {
+      background-color: #fdfdfd;
+      color: #343a40;
+      text-decoration: none;
     }
     .card {
-      background-color: #2a2a2a;
-      border: none;
+      background-color: #2c2c2c;
+      border: 1px solid #444;
       border-radius: 8px;
       margin-bottom: 20px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-      color: #f8f9fa;
+      color: #fdfdfd;
     }
     .card-img-top {
       height: 200px;
@@ -49,54 +62,48 @@
     .card-title {
       font-size: 1rem;
       font-weight: bold;
-      margin-bottom: 0.5rem;
     }
     .card-text {
       font-size: 0.9rem;
-      margin-bottom: 0.5rem;
     }
     .card-footer {
-      background-color: #2a2a2a;
-      border-top: none;
+      background-color: #2c2c2c;
+      border-top: 1px solid #444;
+      color: #fdfdfd;
     }
-    .text-muted {
-      color: #ccc !important;
-      font-size: 0.85rem;
+    h1 {
+      margin-top: 1rem;
     }
   </style>
 </head>
 <body>
-  <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg">
-    <div class="container">
-      <a class="navbar-brand" href="/">Book Recommender System</a>
-      <div class="collapse navbar-collapse">
-        <ul class="navbar-nav ms-auto">
-          <!-- Recommend link takes you to the recommendation page -->
-          <li class="nav-item">
-            <a class="nav-link" href="/recommend">Recommend</a>
-          </li>
-        </ul>
-      </div>
+  <!-- Navigation bar with brand and Recommend button (clickable) -->
+  <nav>
+    <div class="nav-container">
+      <a class="nav-brand" href="/">Book Recommender System</a>
+      <a class="btn-recommend" href="/recommend">Get Suggestions</a>
     </div>
   </nav>
 
-  <!-- Top 50 Books -->
-  <div class="container">
-    <h1 class="section-title">Top 50 Books</h1>
+  <div class="container mt-4">
+    <h1 class="text-center">Top 50 Books</h1>
+    <!-- Responsive cards using Bootstrap grid -->
     <div class="row">
-      {% for i in range(book_name|length) %}
-      <div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex">
+      {% for book in books %}
+      <!-- col-6 for extra-small, col-md-4 for medium, col-lg-3 for large screens -->
+      <div class="col-6 col-md-4 col-lg-3 d-flex">
         <div class="card flex-fill">
-          <img src="{{ image[i] }}" class="card-img-top" alt="Book Cover">
-          <div class="card-body">
-            <h5 class="card-title">{{ book_name[i] }}</h5>
-            <p class="card-text">By: {{ author[i] }}</p>
-          </div>
+          <!-- Wrap the image and details in a clickable link -->
+          <a href="/book/{{ book['Book-Title'] }}" style="text-decoration: none; color: inherit;">
+            <img src="{{ book['Image-URL-M'] }}" class="card-img-top" alt="Book Cover" />
+            <div class="card-body">
+              <h5 class="card-title">{{ book['Book-Title'] }}</h5>
+              <p class="card-text">By: {{ book['Book-Author'] }}</p>
+            </div>
+          </a>
           <div class="card-footer">
-            <!-- Ratings and votes on separate lines -->
-            <small class="text-muted">Rating: {{ ratings[i] }}</small><br>
-            <small class="text-muted">Votes: {{ votes[i] }}</small>
+            <small>Rating: {{ book['avg_rating'] }}</small><br />
+            <small>Votes: {{ book['num_ratings'] }}</small>
           </div>
         </div>
       </div>
@@ -104,9 +111,7 @@
     </div>
   </div>
 
-  <!-- Bootstrap JS (optional) -->
-  <script
-    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
-  ></script>
+  <!-- Bootstrap JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

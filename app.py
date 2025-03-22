@@ -2,60 +2,41 @@ from flask import Flask, render_template, request
 import pickle
 import pandas as pd
 import difflib
+import requests
 
 app = Flask(__name__)
 
 # Load preprocessed data
-books = pickle.load(open("books.pkl", "rb"))
-popular = pickle.load(open("popular.pkl", "rb"))
-pt = pickle.load(open("pt.pkl", "rb"))
-similarity_scores = pickle.load(open("similarity_scores.pkl", "rb"))
+books = pickle.load(open("book-recommender/books.pkl", "rb"))
+popular = pickle.load(open("book-recommender/popular.pkl", "rb"))
+pt = pickle.load(open("book-recommender/pt.pkl", "rb"))
+similarity_scores = pickle.load(open("book-recommender/similarity_scores.pkl", "rb"))
 
 @app.route('/')
 def index():
-    # Displays the Top 50 books from popular.pkl
-    return render_template(
-        "index.html",
-        book_name=list(popular["Book-Title"].values),
-        author=list(popular["Book-Author"].values),
-        image=list(popular["Image-URL-M"].values),
-        votes=list(popular["num_ratings"].values),
-        ratings=list(popular["avg_rating"].values)
-    )
+    # Convert popular books data to list of dictionaries for easier iteration in template
+    data = popular[['Book-Title', 'Book-Author', 'Image-URL-M', 'num_ratings', 'avg_rating']] \
+        .to_dict(orient='records')
+    return render_template("index.html", books=data)
 
 @app.route('/recommend')
 def recommend_page():
-    # Shows the recommendation form (empty by default)
     return render_template("recommend.html", user_input="")
 
 @app.route('/recommend_books', methods=['POST'])
 def recommend_books():
-    # Store the raw user input so we can display it exactly as typed
-    user_input_raw = request.form.get("book_name", "")
-    # For matching logic, use a stripped and lowercased version
-    user_input = user_input_raw.strip().lower()
-    
-    # Normalize the pivot table index by stripping and converting to lowercase
+    user_input = request.form.get("book_name", "").strip().lower()
+    if not user_input:
+        return render_template("recommend.html", error="Please enter a book title.", user_input="")
+
+    # Prepare matching with the pivot table index
     pt_index_lower = [str(title).strip().lower() for title in pt.index]
+    matched_input = next((title for title in pt_index_lower if user_input in title), None) or \
+                    next(iter(difflib.get_close_matches(user_input, pt_index_lower, n=1, cutoff=0.6)), None)
+    if not matched_input:
+        return render_template("recommend.html", error="Book not found. Please try another title.", user_input=user_input)
 
-    # Try to find partial matches first (substring match)
-    partial_matches = [title for title in pt_index_lower if user_input in title]
-    if partial_matches:
-        # Use the first partial match
-        matched_input = partial_matches[0]
-    else:
-        # Fallback to fuzzy matching if no partial match is found
-        closest_matches = difflib.get_close_matches(user_input, pt_index_lower, n=1, cutoff=0.6)
-        if closest_matches:
-            matched_input = closest_matches[0]
-        else:
-            # Pass the user_input_raw back so it remains in the search box
-            return render_template("recommend.html", error="Book not found. Please try another title.", user_input=user_input_raw)
-
-    # Get the actual index of the matching book
     index_loc = pt_index_lower.index(matched_input)
-
-    # Sort books by similarity score (descending), ignoring the book itself
     similar_books = sorted(
         list(enumerate(similarity_scores[index_loc])),
         key=lambda x: x[1],
@@ -63,19 +44,47 @@ def recommend_books():
     )[1:5]
 
     recommendations = []
-    for i in similar_books:
-        # Retrieve the actual title from pt.index and normalize it
-        matched_title = str(pt.index[i[0]]).strip()
-        # Retrieve the book details using case-insensitive and stripped comparison
-        details = books[books['Book-Title'].str.lower().str.strip() == matched_title.lower()].iloc[0]
-        recommendations.append((
-            details['Book-Title'],
-            details['Book-Author'],
-            details['Image-URL-M']
-        ))
+    for idx, score in similar_books:
+        recommended_title = pt.index[idx]
+        matched_rows = books[books['Book-Title'].str.lower().str.strip() == recommended_title.lower().strip()]
+        if not matched_rows.empty:
+            details = matched_rows.iloc[0]
+            rec_title = details['Book-Title']
+            rec_author = details['Book-Author']
+            rec_image = details['Image-URL-M']
+        else:
+            rec_title = recommended_title
+            rec_author = "Unknown"
+            rec_image = "https://via.placeholder.com/150"
+        recommendations.append((rec_title, rec_author, rec_image))
+
+    return render_template("recommend.html", recommendations=recommendations, user_input=user_input)
+
+# New route: Clicking a book opens details page with summary (via Google Books API)
+@app.route('/book/<string:book_title>')
+def book_details(book_title):
+    query = "intitle:" + book_title
+    url = "https://www.googleapis.com/books/v1/volumes?q=" + query
+    response = requests.get(url)
+    data = response.json()
     
-    # Pass user_input_raw so the text remains in the search box
-    return render_template("recommend.html", recommendations=recommendations, user_input=user_input_raw)
+    if "items" in data:
+        book_data = data["items"][0]["volumeInfo"]
+        title = book_data.get("title", "No Title")
+        authors = ", ".join(book_data.get("authors", []))
+        description = book_data.get("description", "No description available.")
+        preview_link = book_data.get("previewLink", "#")
+    else:
+        title = book_title
+        authors = "Unknown"
+        description = "No description available."
+        preview_link = "#"
+    
+    return render_template("book_details.html",
+                           title=title,
+                           authors=authors,
+                           description=description,
+                           preview_link=preview_link)
 
 if __name__ == "__main__":
     app.run(debug=True)
